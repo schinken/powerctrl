@@ -102,7 +102,7 @@ ISR( USART_RXC_vect ){
 
         case STAGE_SINGLE:
             tmp = data-48;
-            if( tmp >= 0 || tmp <= 8 ) {
+            if( tmp >= 0 || tmp <= 7 ) {
                 port = tmp;
                 stage = STAGE_DOT;           
             } else {
