@@ -155,6 +155,8 @@ ISR( USART_RXC_vect ){
                 }
                 
                 SEND_NEWLINE;
+                uart_puts("OK");
+                SEND_NEWLINE;
 
                 stage = STAGE_FLOOR;
             } else {
