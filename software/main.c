@@ -5,6 +5,8 @@
 
 #define USART_BAUD 9600
 
+#define SEND_NEWLINE uart_putc(0x0A); uart_putc(0x0D);
+
 static inline int uart_putc (const uint8_t c)
 {
     while (!(UCSRA & (1 << UDRE)));
@@ -17,22 +19,6 @@ void uart_puts (const char *s){
     }while (*s++);
 }
 
-#define SEND_NEWLINE uart_putc(0x0A); uart_putc(0x0D);
-
-
-#define STAGE_FLOOR     0
-#define STAGE_SET       1
-#define STAGE_SINGLE    2
-#define STAGE_ALL       3
-#define STAGE_PORT      4
-#define STAGE_DOT       5
-#define STAGE_VALUE     6
-#define STAGE_FINAL     7
-
-volatile uint8_t  stage = STAGE_FLOOR
-                 ,port = 0
-                 ,val = 0
-                 ,tmp = 0;
 
 ///////////////////////////////////////////
 // PORTMAPPING
@@ -61,18 +47,39 @@ void switch_port( uint8_t port, uint8_t value ) {
 
     uint8_t tmp = portmap[port];
     
-    if( val == 0 ) {
+    if( value == 0 ) {
         *pport &= ~(1<<tmp);    
     } else {
         *pport |= (1<<tmp);    
     }
 }
 
+#define STAGE_FLOOR     0
+#define STAGE_SET       1
+#define STAGE_SINGLE    2
+#define STAGE_ALL       3
+#define STAGE_PORT      4
+#define STAGE_DOT       5
+#define STAGE_VALUE     6
+#define STAGE_FINAL     7
+
+volatile uint8_t  stage = STAGE_FLOOR
+                 ,port = 0
+                 ,val = 0
+                 ,tmp = 0;
+
 ISR( USART_RXC_vect ){
 
     uint8_t data = UDR;
 
+    // Echo input
     uart_putc(data);
+
+    // Example commands
+    // sp0.1 (switch on single port 0)
+    // sp0.0 (switch off single port 0)
+    // sa0   (switch off everything)
+    // sa1   (switch on everything)
 
     switch( stage ) {
         case STAGE_FLOOR:
@@ -123,6 +130,7 @@ ISR( USART_RXC_vect ){
             break;
 
         case STAGE_VALUE:
+
             tmp = data-48;
             if( tmp == 0 || tmp == 1 ) {
                 val = tmp;
@@ -133,6 +141,7 @@ ISR( USART_RXC_vect ){
             break;
 
         case STAGE_FINAL:
+
             if( data == '\r' ) {
 
                 PORTD |= (1<<PIN5);
@@ -144,40 +153,11 @@ ISR( USART_RXC_vect ){
                 } else {
                     switch_port( port, val );
                 }
-
+                
                 SEND_NEWLINE;
 
-                if( port == 0xFF ){
-                    if( val == 0 ) {
-                        uart_puts("Setting all ports 0!");
-                    } else {
-                        uart_puts("Setting all ports 1!");
-                    }
-                } else {
-                    switch( port ) {
-                        case 0: uart_puts("Set port 0"); break;
-                        case 1: uart_puts("Set port 1"); break;
-                        case 2: uart_puts("Set port 2"); break;
-                        case 3: uart_puts("Set port 3"); break;
-                        case 4: uart_puts("Set port 4"); break;
-                        case 5: uart_puts("Set port 5"); break;
-                        case 6: uart_puts("Set port 6"); break;
-                        case 7: uart_puts("Set port 7"); break;
-                        default:
-                            uart_puts("unknown wtf...");
-                            break;
-                    }
-
-                    if( val == 1 ) {
-                        uart_puts(" to 1");
-                    } else {
-                        uart_puts(" to 0");
-                    }
-                }
-                SEND_NEWLINE;
                 stage = STAGE_FLOOR;
             } else {
-                uart_puts("UNKNOWN NEWLINE");    
                 stage = STAGE_FLOOR;
             }
 
@@ -188,11 +168,8 @@ ISR( USART_RXC_vect ){
 
 int main (void) {            
 
-//    asm("NOP;");
-
-    // INIT DMX
     UCSRC = (1<<USBS) | (1<<UCSZ1) | (1<<UCSZ0); // 2 stop bits, 8 data bits
-    UCSRB = (1<<RXEN) | (1<<RXCIE) | (1<<TXEN);               // enable transmit, receive and interrupts,
+    UCSRB = (1<<RXEN) | (1<<RXCIE) | (1<<TXEN);  // enable transmit, receive and interrupts
 
     uint16_t ubrr = (uint16_t) ((uint32_t) F_CPU/(16UL*USART_BAUD) - 1);
 
@@ -205,6 +182,7 @@ int main (void) {
     sei();
 
     while(1) {
+        // Switch off blue LED
         PORTD &= ~(1<<PIN5);
         _delay_ms(1000);
     }
