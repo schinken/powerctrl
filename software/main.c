@@ -2,10 +2,12 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <avr/pgmspace.h>
 
 #define USART_BAUD 9600
 
 #define SEND_NEWLINE uart_putc(0x0A); uart_putc(0x0D);
+
 
 static inline int uart_putc (const uint8_t c)
 {
@@ -34,12 +36,12 @@ void uart_puts (const char *s){
 
 const uint8_t portmap[8] = {PIN3,PIN2,PIN5,PIN4,PIN3,PIN2,PIN1,PIN0};
 
-void switch_port( uint8_t port, uint8_t value ) {
+void switch_port(uint8_t port, uint8_t value) {
     
     volatile uint8_t *pport = 0;
 
     // PIN 0 and 1 is on a different port
-    if( port == 0 || port == 1 ) {
+    if(port == 0 || port == 1) {
         pport = &PORTD;    
     } else {
         pport = &PORTC;    
@@ -47,7 +49,7 @@ void switch_port( uint8_t port, uint8_t value ) {
 
     uint8_t tmp = portmap[port];
     
-    if( value == 0 ) {
+    if(value == 0) {
         *pport &= ~(1<<tmp);    
     } else {
         *pport |= (1<<tmp);    
@@ -66,9 +68,12 @@ void switch_port( uint8_t port, uint8_t value ) {
 volatile uint8_t  stage = STAGE_FLOOR
                  ,port = 0
                  ,val = 0
-                 ,tmp = 0;
+                 ,tmp = 0
+                 ,led_off = 0;
 
-ISR( USART_RXC_vect ){
+        uint16_t led_cnt = 0;
+
+ISR(USART_RXC_vect){
 
     uint8_t data = UDR;
 
@@ -81,70 +86,84 @@ ISR( USART_RXC_vect ){
     // sa0   (switch off everything)
     // sa1   (switch on everything)
 
-    switch( stage ) {
+    switch(stage) {
         case STAGE_FLOOR:
+
             port = 0;
-            if( data == 's' ) {
+
+            if(data == 's') {
                 stage = STAGE_SET;
             }
+
             break;
 
         case STAGE_SET:
-            if( data == 'p' ) {
+
+            if(data == 'p') {
                 stage = STAGE_SINGLE;
-            } else if ( data == 'a' ) {
+            } else if (data == 'a') {
                 stage = STAGE_ALL;
             } else {
                 stage = STAGE_FLOOR;
             }
-        
+
             break;
 
         case STAGE_SINGLE:
+
             tmp = data-48;
-            if( tmp >= 0 || tmp <= 7 ) {
+            if(tmp >= 0 || tmp <= 7) {
                 port = tmp;
-                stage = STAGE_DOT;           
+                stage = STAGE_DOT;
             } else {
-                stage = STAGE_FLOOR;    
+                stage = STAGE_FLOOR;
             }
+
             break;
 
         case STAGE_ALL:
+
             port = 0xFF;
             tmp = data-48;
-            if( tmp == 0 || tmp == 1 ) {
+            if(tmp == 0 || tmp == 1) {
                 val = tmp;
                 stage = STAGE_FINAL;
             } else {
-                stage = STAGE_FLOOR;    
+                stage = STAGE_FLOOR;
             }
+
             break;
 
         case STAGE_DOT:
-            if( data == '.' ) {
+
+            if(data == '.') {
                 stage = STAGE_VALUE;
             } else {
                 stage = STAGE_FLOOR;
-            }        
+            }
+
             break;
 
         case STAGE_VALUE:
 
             tmp = data-48;
+
             if( tmp == 0 || tmp == 1 ) {
                 val = tmp;
                 stage = STAGE_FINAL;
             } else {
                 stage = STAGE_FLOOR;    
             }
+
             break;
 
         case STAGE_FINAL:
 
             if( data == '\r' ) {
 
-                PORTD |= (1<<PIN5);
+                PORTD |= (1<<PIN4);
+                led_off = 1;
+                led_cnt = 200;
 
                 if( port == 0xFF ) {
                     for( tmp = 0; tmp < 8;tmp++ ) {
@@ -181,12 +200,21 @@ int main (void) {
     DDRD |= (1<<PIN5) | (1<<PIN3) | (1<<PIN2);
     DDRC |= (1<<PIN5) | (1<<PIN4) | (1<<PIN3) | (1<<PIN2) | (1<<PIN1) | (1<<PIN0);
 
+    DDRB |= (1<<PIN1);
+
+    DDRD  |= (1<<PIN4);
+
     sei();
 
     while(1) {
-        // Switch off blue LED
-        PORTD &= ~(1<<PIN5);
-        _delay_ms(1000);
+        if(led_off==1) {
+            if(led_cnt == 0) {
+                led_off = 0;
+                PORTD &= ~(1<<PIN4);
+            } else {
+                led_cnt--;    
+            }
+        }
     }
 
     return 0;                 
