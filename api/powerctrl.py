@@ -30,7 +30,7 @@ class SerialActor():
 
     def switch(self, port, on):
         switch = 1 if on else 0
-        self.send('sp%d.%d' % (port, switch))
+        self.send('sp%d.%d\n' % (port, switch))
 
 
 class DecoupledActor(threading.Thread):
