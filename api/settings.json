@@ -1,0 +1,10 @@
+{
+    "server": {
+        "host": "0.0.0.0",
+        "device": "/dev/ttyACM3"
+    },
+    "devices": [
+        {"key": "example_1", "name": "Example 1", "config": {"port": 0}},
+        {"key": "example_2", "name": "Example 2", "config": {"port": 1}}
+    ]
+}
