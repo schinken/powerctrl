@@ -26,7 +26,7 @@ class SerialActor():
             time.sleep(0.5)
 
             # try again
-            self.send_datagram(datagram)
+            self.send(datagram)
 
     def switch(self, port, on):
         switch = 1 if on else 0
