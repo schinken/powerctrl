@@ -13,9 +13,12 @@ class SerialActor():
         try:
             self.ser.write(datagram)
 
-            ack = self.ser.read(len(datagram)+2)
-            if ack != datagram+"OK":
-                print "Failed to receive ack!"
+            msg = ""
+            while True:
+                msg += self.ser.read(1)
+                if "OK" in msg:
+                    break
+
 
         except:
             if self.ser.isOpen():
