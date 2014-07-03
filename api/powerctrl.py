@@ -7,15 +7,14 @@ class SerialActor():
 
     def __init__(self, ser_device, baud=9600):
         self.ser = serial.Serial(port=ser_device, baudrate=baud)
-        pass
 
     def send(self, datagram):
 
         try:
             self.ser.write(datagram)
 
-            ack = self.ser.read(2)
-            if ord(ack) != "OK":
+            ack = self.ser.read(len(datagram)+2)
+            if ack != datagram+"OK":
                 print "Failed to receive ack!"
 
         except:
