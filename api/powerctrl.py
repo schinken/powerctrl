@@ -7,6 +7,8 @@ class SerialActor():
 
     def __init__(self, ser_device, baud=9600):
         self.ser = serial.Serial(port=ser_device, baudrate=baud)
+        # Arduinos need time for serial response .. 
+        time.sleep(2)
 
     def send(self, datagram):
 
@@ -25,7 +27,7 @@ class SerialActor():
                 self.ser.close()
 
             self.ser.open()
-            time.sleep(0.5)
+            time.sleep(2)
 
             # try again
             self.send(datagram)
